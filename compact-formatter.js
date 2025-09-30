@@ -4,8 +4,8 @@ export function formatUltraCompact(aggregated) {
 
   // Inline legend with explicit explanations
   lines.push('=== CODEBASE ANALYSIS ===');
-  lines.push('f=files L=lines fn=functions cls=classes i=imports e=exports cx=complexity d=AST-depth (N)=param-count');
-  lines.push('orph=orphaned-files dup=duplicate-code circ=circular-deps in/out=dependency-coupling');
+  lines.push('Abbreviations: f=files L=lines fn=functions cls=classes i=imports e=exports cx=complexity d=AST-depth (N)=param-count');
+  lines.push('Issues: orph=orphaned-files dup=duplicate-code circ=circular-deps in/out=dependency-coupling');
   lines.push('');
 
   // Header: total metrics
@@ -14,7 +14,7 @@ export function formatUltraCompact(aggregated) {
   const avgCx = totalFn > 0 ? (Object.values(stats.byLanguage).reduce((s, l) => s + l.complexity, 0) / totalFn).toFixed(1) : 0;
   const avgDepth = metrics.depths.length > 0 ? (metrics.depths.reduce((a, b) => a + b, 0) / metrics.depths.length).toFixed(1) : 0;
 
-  lines.push(`TOTALS: ${stats.files}f ${k(stats.totalLines)}L ${totalFn}fn ${totalCls}cls cx${avgCx} d${avgDepth} | Issues: ${depGraph.orphans.size}orph ${duplicates.length}dup ${circular.length}circ`);
+  lines.push(`TOTALS: ${stats.files}f ${k(stats.totalLines)}L ${totalFn}fn ${totalCls}cls avg-cx${avgCx} avg-d${avgDepth} | Issues: ${depGraph.orphans.size}orph ${duplicates.length}dup ${circular.length}circ`);
 
   // Language breakdown
   for (const [lang, ls] of Object.entries(stats.byLanguage).sort((a, b) => b[1].lines - a[1].lines)) {
@@ -23,7 +23,7 @@ export function formatUltraCompact(aggregated) {
     lines.push(`${lang} ${ratio}%: ${ls.files}f ${k(ls.lines)}L ${ls.functions}fn ${ls.classes}cls ${ls.imports}i ${ls.exports}e cx${cx}`);
   }
 
-  // Top functions (most frequently defined)
+  // Top functions (most frequently defined - pattern analysis)
   const allFuncs = [];
   for (const [lang, ents] of Object.entries(entities)) {
     for (const [sig, data] of ents.functions) {
@@ -86,12 +86,12 @@ export function formatUltraCompact(aggregated) {
   // Coupling (most connected files - central hubs, refactor candidates)
   if (depGraph && depGraph.coupling.size > 0) {
     const topCoupled = Array.from(depGraph.coupling).sort((a, b) => b[1].total - a[1].total).slice(0, 5);
-    lines.push('COUPLING(central-files): ' + topCoupled.map(([f, c]) => `${f}(${c.in}←imports ${c.out}→uses)`).join(' | '));
+    lines.push('COUPLING(central-files): ' + topCoupled.map(([f, c]) => `${f}(in${c.in}←imported-by out${c.out}→imports)`).join(' | '));
   }
 
   // Duplicates (similar function implementations - structural clones, consolidation candidates)
   if (duplicates && duplicates.length > 0) {
-    lines.push('DUPLICATES(code-clones): ' + duplicates.slice(0, 5).map(d => `${d.count}×copies hash${d.hash.slice(0,4)} in[${d.instances.map(i => i.file.split('/').pop()).join(',')}]`).join(' | '));
+    lines.push('DUPLICATES(code-clones): ' + duplicates.slice(0, 5).map(d => `${d.count}×copies AST-hash:${d.hash.slice(0,6)} in[${d.instances.map(i => i.file.split('/').pop()).join(',')}]`).join(' | '));
   }
 
   // Circular dependencies (import cycles - architecture issues)
