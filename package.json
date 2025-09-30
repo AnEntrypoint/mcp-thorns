@@ -1,6 +1,6 @@
 {
   "name": "mcp-thorns",
-  "version": "2.1.2",
+  "version": "2.1.3",
   "description": "Ultra-compact tree-sitter codebase analysis tool - maximum insight, minimal output",
   "type": "module",
   "main": "./lib.js",
