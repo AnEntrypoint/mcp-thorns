@@ -17,6 +17,7 @@ import { extractEntities, calculateMetrics } from './analyzer.js';
 import { formatUltraCompact } from './compact-formatter.js';
 import { extractDependencies, buildDependencyGraph, analyzeModules } from './dependency-analyzer.js';
 import { extractAdvancedMetrics, detectDuplication, hashFunction, detectCircularDeps, analyzeFileSizes } from './advanced-metrics.js';
+import { buildIgnoreSet, shouldIgnore } from './ignore-parser.js';
 
 const LANGUAGES = {
   '.js': { parser: JavaScript, name: 'JavaScript' },
@@ -41,7 +42,6 @@ const LANGUAGES = {
   '.json': { parser: JSON, name: 'JSON' }
 };
 
-const IGNORE_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'coverage', '.next', 'out', 'vendor', 'target']);
 const MAX_FILE_SIZE = 1024 * 1024;
 
 function getLanguage(filepath) {
@@ -49,21 +49,26 @@ function getLanguage(filepath) {
   return LANGUAGES[ext];
 }
 
-function* walkDir(dir, baseDir = dir) {
+function* walkDir(dir, baseDir = dir, ignorePatterns = new Set()) {
   const entries = readdirSync(dir, { withFileTypes: true });
   for (const entry of entries) {
     const fullPath = join(dir, entry.name);
+    const relativePath = relative(baseDir, fullPath);
+
+    // Check if path should be ignored
+    if (shouldIgnore(relativePath, ignorePatterns) || shouldIgnore(entry.name, ignorePatterns)) {
+      continue;
+    }
+
     if (entry.isDirectory()) {
-      if (!IGNORE_DIRS.has(entry.name)) {
-        yield* walkDir(fullPath, baseDir);
-      }
+      yield* walkDir(fullPath, baseDir, ignorePatterns);
     } else if (entry.isFile()) {
       const lang = getLanguage(entry.name);
       if (lang) {
         try {
           const stat = statSync(fullPath);
           if (stat.size <= MAX_FILE_SIZE) {
-            yield { path: fullPath, relativePath: relative(baseDir, fullPath), lang };
+            yield { path: fullPath, relativePath, lang };
           }
         } catch (e) {}
       }
@@ -109,7 +114,10 @@ function analyzeCodebase(rootPath = '.') {
   const fileMetrics = {};
   const fileAnalysis = {};
 
-  for (const { path, relativePath, lang } of walkDir(rootPath)) {
+  // Build comprehensive ignore set
+  const ignorePatterns = buildIgnoreSet(rootPath);
+
+  for (const { path, relativePath, lang } of walkDir(rootPath, rootPath, ignorePatterns)) {
     try {
       parser.setLanguage(lang.parser);
       const source = readFileSync(path, 'utf8');
