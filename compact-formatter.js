@@ -23,7 +23,7 @@ export function formatUltraCompact(aggregated) {
     lines.push(`${lang} ${ratio}%: ${ls.files}f ${k(ls.lines)}L ${ls.functions}fn ${ls.classes}cls ${ls.imports}i ${ls.exports}e cx${cx}`);
   }
 
-  // Top functions
+  // Top functions (most frequently defined)
   const allFuncs = [];
   for (const [lang, ents] of Object.entries(entities)) {
     for (const [sig, data] of ents.functions) {
@@ -32,10 +32,10 @@ export function formatUltraCompact(aggregated) {
   }
   const topFuncs = allFuncs.sort((a, b) => b.count - a.count).slice(0, 10);
   if (topFuncs.length > 0) {
-    lines.push('TOP_FN: ' + topFuncs.map(f => `${f.count}×${f.lang.slice(0,2)}:${f.sig.slice(0,35)}`).join(' | '));
+    lines.push('TOP-FUNCTIONS(most-defined): ' + topFuncs.map(f => `${f.count}×${f.lang.slice(0,2)}:${f.sig.slice(0,35)}`).join(' | '));
   }
 
-  // Top classes
+  // Top classes (most frequently defined)
   const allClasses = [];
   for (const [lang, ents] of Object.entries(entities)) {
     for (const [name, data] of ents.classes) {
@@ -44,10 +44,10 @@ export function formatUltraCompact(aggregated) {
   }
   const topClasses = allClasses.sort((a, b) => b.count - a.count).slice(0, 5);
   if (topClasses.length > 0) {
-    lines.push('TOP_CLS: ' + topClasses.map(c => `${c.count}×${c.lang.slice(0,2)}:${c.name}`).join(' | '));
+    lines.push('TOP-CLASSES(most-defined): ' + topClasses.map(c => `${c.count}×${c.lang.slice(0,2)}:${c.name}`).join(' | '));
   }
 
-  // Import patterns
+  // Import patterns (most common dependencies)
   const allImports = new Map();
   for (const [lang, ents] of Object.entries(entities)) {
     for (const imp of ents.imports) {
@@ -57,10 +57,10 @@ export function formatUltraCompact(aggregated) {
   }
   const topImports = Array.from(allImports).sort((a, b) => b[1] - a[1]).slice(0, 8);
   if (topImports.length > 0) {
-    lines.push('TOP_IMP: ' + topImports.map(([i, c]) => `${c}×${i}`).join(' | '));
+    lines.push('TOP-IMPORTS(common-deps): ' + topImports.map(([i, c]) => `${c}×${i}`).join(' | '));
   }
 
-  // API calls
+  // API calls (most frequent function calls)
   const allPatterns = new Map();
   for (const [lang, ents] of Object.entries(entities)) {
     for (const [pattern, count] of ents.patterns) {
@@ -69,49 +69,49 @@ export function formatUltraCompact(aggregated) {
   }
   const topPatterns = Array.from(allPatterns).sort((a, b) => b[1] - a[1]).slice(0, 12);
   if (topPatterns.length > 0) {
-    lines.push('TOP_CALLS: ' + topPatterns.map(([p, c]) => `${c}×${p}`).join(' '));
+    lines.push('TOP-CALLS(frequent-invocations): ' + topPatterns.map(([p, c]) => `${c}×${p}`).join(' '));
   }
 
-  // Hotspots
+  // Hotspots (most complex files - refactor candidates)
   if (metrics.hotspots.length > 0) {
-    lines.push('HOT: ' + metrics.hotspots.slice(0, 5).map(h => `cx${h.cx}d${h.depth}:${h.file}`).join(' | '));
+    lines.push('HOTSPOTS(complex-files): ' + metrics.hotspots.slice(0, 5).map(h => `cx${h.cx}d${h.depth}:${h.file}`).join(' | '));
   }
 
-  // Orphans (files not imported anywhere - potential dead code)
+  // Orphans (files not imported anywhere - potential dead code or entry points)
   if (depGraph && depGraph.orphans.size > 0) {
     const orphList = Array.from(depGraph.orphans).slice(0, 10).join(' ');
-    lines.push(`ORPHANS(not-imported): ${orphList}`);
+    lines.push(`ORPHANS(unused-or-entries): ${orphList}`);
   }
 
-  // Coupling (most connected files - refactor candidates)
+  // Coupling (most connected files - central hubs, refactor candidates)
   if (depGraph && depGraph.coupling.size > 0) {
     const topCoupled = Array.from(depGraph.coupling).sort((a, b) => b[1].total - a[1].total).slice(0, 5);
-    lines.push('COUPLING(dependencies): ' + topCoupled.map(([f, c]) => `${f}(${c.in}←imports ${c.out}→uses)`).join(' | '));
+    lines.push('COUPLING(central-files): ' + topCoupled.map(([f, c]) => `${f}(${c.in}←imports ${c.out}→uses)`).join(' | '));
   }
 
-  // Duplicates (similar function implementations - structural clones)
+  // Duplicates (similar function implementations - structural clones, consolidation candidates)
   if (duplicates && duplicates.length > 0) {
-    lines.push('DUPLICATES(AST-clones): ' + duplicates.slice(0, 5).map(d => `${d.count}×copies hash${d.hash.slice(0,4)} in[${d.instances.map(i => i.file.split('/').pop()).join(',')}]`).join(' | '));
+    lines.push('DUPLICATES(code-clones): ' + duplicates.slice(0, 5).map(d => `${d.count}×copies hash${d.hash.slice(0,4)} in[${d.instances.map(i => i.file.split('/').pop()).join(',')}]`).join(' | '));
   }
 
-  // Circular dependencies
+  // Circular dependencies (import cycles - architecture issues)
   if (circular && circular.length > 0) {
-    lines.push('CIRCULAR-DEPS: ' + circular.slice(0, 3).map(c => c.join('→')).join(' | '));
+    lines.push('CIRCULAR-DEPS(import-cycles): ' + circular.slice(0, 3).map(c => c.join('→')).join(' | '));
   }
 
-  // File sizes (maintainability risk)
+  // File sizes (maintainability risk - large files harder to maintain)
   if (fileSizes && fileSizes.largest) {
-    lines.push('LARGEST-FILES: ' + fileSizes.largest.slice(0, 5).map(s => `${s.file}(${s.lines}L)`).join(' '));
+    lines.push('LARGEST-FILES(split-candidates): ' + fileSizes.largest.slice(0, 5).map(s => `${s.file}(${s.lines}L)`).join(' '));
     if (fileSizes.distribution) {
       const d = fileSizes.distribution;
-      lines.push(`FILE-SIZE-DIST(lines): tiny(<50)=${d.tiny} small(50-200)=${d.small} med(200-500)=${d.medium} large(500-1k)=${d.large} huge(>1k)=${d.huge}`);
+      lines.push(`FILE-SIZE-DISTRIBUTION: tiny(<50)=${d.tiny} small(50-200)=${d.small} medium(200-500)=${d.medium} large(500-1k)=${d.large} huge(>1k)=${d.huge}`);
     }
   }
 
-  // Top identifiers (most used variables/names)
+  // Top identifiers (most used variable names in codebase)
   if (identifiers) {
     const topIds = Array.from(identifiers).sort((a, b) => b[1] - a[1]).slice(0, 15);
-    lines.push('TOP-IDENTIFIERS(variables): ' + topIds.map(([n, c]) => `${c}×"${n}"`).join(' '));
+    lines.push('TOP-IDENTIFIERS(common-names): ' + topIds.map(([n, c]) => `${c}×"${n}"`).join(' '));
   }
 
   return lines.join('\n');
