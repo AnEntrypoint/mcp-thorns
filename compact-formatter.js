@@ -2,8 +2,11 @@ export function formatUltraCompact(aggregated) {
   const lines = [];
   const { stats, entities, metrics, depGraph, duplicates, circular, fileSizes, identifiers } = aggregated;
 
-  // Inline legend
-  lines.push('KEY: f=file L=line fn=func cls=class i=imp e=exp cx=complex d=depth in/out=deps dup=dupe');
+  // Inline legend with explicit explanations
+  lines.push('=== CODEBASE ANALYSIS ===');
+  lines.push('f=files L=lines fn=functions cls=classes i=imports e=exports cx=complexity d=AST-depth (N)=param-count');
+  lines.push('orph=orphaned-files dup=duplicate-code circ=circular-deps in/out=dependency-coupling');
+  lines.push('');
 
   // Header: total metrics
   const totalFn = Object.values(stats.byLanguage).reduce((s, l) => s + l.functions, 0);
@@ -11,7 +14,7 @@ export function formatUltraCompact(aggregated) {
   const avgCx = totalFn > 0 ? (Object.values(stats.byLanguage).reduce((s, l) => s + l.complexity, 0) / totalFn).toFixed(1) : 0;
   const avgDepth = metrics.depths.length > 0 ? (metrics.depths.reduce((a, b) => a + b, 0) / metrics.depths.length).toFixed(1) : 0;
 
-  lines.push(`TOT: ${stats.files}f ${k(stats.totalLines)}L ${totalFn}fn ${totalCls}cls cx${avgCx} d${avgDepth} orph${depGraph.orphans.size} dup${duplicates.length} circ${circular.length}`);
+  lines.push(`TOTALS: ${stats.files}f ${k(stats.totalLines)}L ${totalFn}fn ${totalCls}cls cx${avgCx} d${avgDepth} | Issues: ${depGraph.orphans.size}orph ${duplicates.length}dup ${circular.length}circ`);
 
   // Language breakdown
   for (const [lang, ls] of Object.entries(stats.byLanguage).sort((a, b) => b[1].lines - a[1].lines)) {
@@ -74,41 +77,41 @@ export function formatUltraCompact(aggregated) {
     lines.push('HOT: ' + metrics.hotspots.slice(0, 5).map(h => `cx${h.cx}d${h.depth}:${h.file}`).join(' | '));
   }
 
-  // Orphans (files not imported anywhere)
+  // Orphans (files not imported anywhere - potential dead code)
   if (depGraph && depGraph.orphans.size > 0) {
     const orphList = Array.from(depGraph.orphans).slice(0, 10).join(' ');
-    lines.push(`ORPH: ${orphList}`);
+    lines.push(`ORPHANS(not-imported): ${orphList}`);
   }
 
-  // Coupling (most connected files)
+  // Coupling (most connected files - refactor candidates)
   if (depGraph && depGraph.coupling.size > 0) {
     const topCoupled = Array.from(depGraph.coupling).sort((a, b) => b[1].total - a[1].total).slice(0, 5);
-    lines.push('COUP: ' + topCoupled.map(([f, c]) => `${f}(${c.in}in${c.out}out)`).join(' | '));
+    lines.push('COUPLING(dependencies): ' + topCoupled.map(([f, c]) => `${f}(${c.in}←imports ${c.out}→uses)`).join(' | '));
   }
 
-  // Duplicates (similar function implementations)
+  // Duplicates (similar function implementations - structural clones)
   if (duplicates && duplicates.length > 0) {
-    lines.push('DUP: ' + duplicates.slice(0, 5).map(d => `${d.count}×${d.hash.slice(0,4)}:${d.instances.map(i => i.file.split('/').pop()).join(',')}`).join(' | '));
+    lines.push('DUPLICATES(AST-clones): ' + duplicates.slice(0, 5).map(d => `${d.count}×copies hash${d.hash.slice(0,4)} in[${d.instances.map(i => i.file.split('/').pop()).join(',')}]`).join(' | '));
   }
 
   // Circular dependencies
   if (circular && circular.length > 0) {
-    lines.push('CIRC: ' + circular.slice(0, 3).map(c => c.join('→')).join(' | '));
+    lines.push('CIRCULAR-DEPS: ' + circular.slice(0, 3).map(c => c.join('→')).join(' | '));
   }
 
-  // File sizes
+  // File sizes (maintainability risk)
   if (fileSizes && fileSizes.largest) {
-    lines.push('SIZE: ' + fileSizes.largest.slice(0, 5).map(s => `${s.file}:${s.lines}L`).join(' '));
+    lines.push('LARGEST-FILES: ' + fileSizes.largest.slice(0, 5).map(s => `${s.file}(${s.lines}L)`).join(' '));
     if (fileSizes.distribution) {
       const d = fileSizes.distribution;
-      lines.push(`DIST: <50:${d.tiny} 50-200:${d.small} 200-500:${d.medium} 500-1k:${d.large} >1k:${d.huge}`);
+      lines.push(`FILE-SIZE-DIST(lines): tiny(<50)=${d.tiny} small(50-200)=${d.small} med(200-500)=${d.medium} large(500-1k)=${d.large} huge(>1k)=${d.huge}`);
     }
   }
 
-  // Top identifiers
+  // Top identifiers (most used variables/names)
   if (identifiers) {
     const topIds = Array.from(identifiers).sort((a, b) => b[1] - a[1]).slice(0, 15);
-    lines.push('IDS: ' + topIds.map(([n, c]) => `${c}×${n}`).join(' '));
+    lines.push('TOP-IDENTIFIERS(variables): ' + topIds.map(([n, c]) => `${c}×"${n}"`).join(' '));
   }
 
   return lines.join('\n');
