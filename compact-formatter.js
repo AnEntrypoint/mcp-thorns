@@ -1,9 +1,9 @@
 export function formatUltraCompact(aggregated) {
   const lines = [];
-  const { stats, entities, metrics } = aggregated;
+  const { stats, entities, metrics, depGraph, duplicates, circular, fileSizes, identifiers } = aggregated;
 
   // Inline legend
-  lines.push('LEGEND: f=files L=lines fn=functions cls=classes i=imports e=exports cx=complexity d=depth');
+  lines.push('KEY: f=file L=line fn=func cls=class i=imp e=exp cx=complex d=depth in/out=deps dup=dupe');
 
   // Header: total metrics
   const totalFn = Object.values(stats.byLanguage).reduce((s, l) => s + l.functions, 0);
@@ -11,7 +11,7 @@ export function formatUltraCompact(aggregated) {
   const avgCx = totalFn > 0 ? (Object.values(stats.byLanguage).reduce((s, l) => s + l.complexity, 0) / totalFn).toFixed(1) : 0;
   const avgDepth = metrics.depths.length > 0 ? (metrics.depths.reduce((a, b) => a + b, 0) / metrics.depths.length).toFixed(1) : 0;
 
-  lines.push(`TOTAL: ${stats.files}f ${k(stats.totalLines)}L ${totalFn}fn ${totalCls}cls cx${avgCx} d${avgDepth}`);
+  lines.push(`TOT: ${stats.files}f ${k(stats.totalLines)}L ${totalFn}fn ${totalCls}cls cx${avgCx} d${avgDepth} orph${depGraph.orphans.size} dup${duplicates.length} circ${circular.length}`);
 
   // Language breakdown
   for (const [lang, ls] of Object.entries(stats.byLanguage).sort((a, b) => b[1].lines - a[1].lines)) {
@@ -71,7 +71,44 @@ export function formatUltraCompact(aggregated) {
 
   // Hotspots
   if (metrics.hotspots.length > 0) {
-    lines.push('HOTSPOTS: ' + metrics.hotspots.slice(0, 5).map(h => `cx${h.cx}d${h.depth}:${h.file}`).join(' | '));
+    lines.push('HOT: ' + metrics.hotspots.slice(0, 5).map(h => `cx${h.cx}d${h.depth}:${h.file}`).join(' | '));
+  }
+
+  // Orphans (files not imported anywhere)
+  if (depGraph && depGraph.orphans.size > 0) {
+    const orphList = Array.from(depGraph.orphans).slice(0, 10).join(' ');
+    lines.push(`ORPH: ${orphList}`);
+  }
+
+  // Coupling (most connected files)
+  if (depGraph && depGraph.coupling.size > 0) {
+    const topCoupled = Array.from(depGraph.coupling).sort((a, b) => b[1].total - a[1].total).slice(0, 5);
+    lines.push('COUP: ' + topCoupled.map(([f, c]) => `${f}(${c.in}in${c.out}out)`).join(' | '));
+  }
+
+  // Duplicates (similar function implementations)
+  if (duplicates && duplicates.length > 0) {
+    lines.push('DUP: ' + duplicates.slice(0, 5).map(d => `${d.count}×${d.hash.slice(0,4)}:${d.instances.map(i => i.file.split('/').pop()).join(',')}`).join(' | '));
+  }
+
+  // Circular dependencies
+  if (circular && circular.length > 0) {
+    lines.push('CIRC: ' + circular.slice(0, 3).map(c => c.join('→')).join(' | '));
+  }
+
+  // File sizes
+  if (fileSizes && fileSizes.largest) {
+    lines.push('SIZE: ' + fileSizes.largest.slice(0, 5).map(s => `${s.file}:${s.lines}L`).join(' '));
+    if (fileSizes.distribution) {
+      const d = fileSizes.distribution;
+      lines.push(`DIST: <50:${d.tiny} 50-200:${d.small} 200-500:${d.medium} 500-1k:${d.large} >1k:${d.huge}`);
+    }
+  }
+
+  // Top identifiers
+  if (identifiers) {
+    const topIds = Array.from(identifiers).sort((a, b) => b[1] - a[1]).slice(0, 15);
+    lines.push('IDS: ' + topIds.map(([n, c]) => `${c}×${n}`).join(' '));
   }
 
   return lines.join('\n');

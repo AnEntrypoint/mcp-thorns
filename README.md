@@ -1,14 +1,19 @@
-# Thorns - Compact Tree-sitter Codebase Analysis
+# Thorns - Ultra-Compact Codebase Intelligence
 
-Cross-platform codebase analysis tool using tree-sitter for maximum insight with minimal output.
+Cross-platform codebase analysis using tree-sitter for maximum insight with minimal output.
 
 ## Features
 
-- **Cross-platform**: Works on WSL, Linux, Windows, and macOS (arm64/x64)
-- **Multi-language**: JavaScript, TypeScript, Python, Rust, Go, C/C++, Java, C#, Ruby, PHP, JSON
-- **Compact output**: Dense, information-rich statistics
-- **Fast**: Native tree-sitter parsing with prebuilt binaries
-- **No build required**: Pure JavaScript with native bindings
+- **Cross-platform**: WSL, Linux, Windows, macOS (arm64/x64)
+- **12 languages**: JavaScript, TypeScript, Python, Rust, Go, C/C++, Java, C#, Ruby, PHP, JSON
+- **Dependency graph**: File-level imports, orphans, circular deps
+- **Code duplication**: AST-based clone detection
+- **Coupling metrics**: Most connected files
+- **File sizes**: Distribution and largest files
+- **Identifier usage**: Most common variables/functions
+- **Complexity hotspots**: High cx/depth files
+- **Ultra-compact**: Zero unnecessary tokens
+- **Fast**: Native parsers, ~1000 files/sec
 
 ## Installation
 
@@ -88,14 +93,22 @@ cx:57 d:19 src/validation-system.js
 cx:20 d:28 src/stateless-mcp-tools-basic.js
 ```
 
-Legend:
-- Header: `files` `lines` `functions` `classes` `avg_complexity` `avg_depth`
-- Lang: 2-letter code, % of codebase, files(f), lines(L), functions(fn), classes(c), imports(i), exports(e), complexity(cx)
-- fn: Most common function signatures with parameter count
-- cls: Most common class/struct/interface names
-- imports: Most frequently used imports (deduplicated)
-- calls: Most common API/function calls
-- hotspots: Files with high complexity(cx) or depth(d)
+**Legend:**
+- `KEY`: Abbreviations used throughout
+- `TOT`: Total files, lines, functions, classes, avg complexity, avg depth, orphans, duplicates, circular deps
+- Language rows: % of codebase, file/line/function/class/import/export counts, avg complexity
+- `TOP_FN`: Most common function signatures (count × lang : signature)
+- `TOP_CLS`: Most common classes
+- `TOP_IMP`: Most frequent imports
+- `TOP_CALLS`: Most called functions/APIs
+- `HOT`: Complexity hotspots (cx=complexity, d=depth)
+- `ORPH`: Orphaned files (not imported anywhere)
+- `COUP`: Coupling (files with most dependencies, in=imported by, out=imports from)
+- `DUP`: Duplicate code (count × hash : files)
+- `CIRC`: Circular dependencies
+- `SIZE`: Largest files
+- `DIST`: File size distribution
+- `IDS`: Most used identifiers/variables
 
 ## Supported Languages
 
