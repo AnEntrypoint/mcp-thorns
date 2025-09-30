@@ -96,21 +96,22 @@ cx:20 d:28 src/stateless-mcp-tools-basic.js
 ```
 
 **Legend:**
-- `KEY`: Abbreviations used throughout
-- `TOT`: Total files, lines, functions, classes, avg complexity, avg depth, orphans, duplicates, circular deps
+- Abbreviations: `f`=files `L`=lines `fn`=functions `cls`=classes `i`=imports `e`=exports `cx`=complexity `d`=AST-depth `(N)`=param-count
+- Issues: `orph`=orphaned-files `dup`=duplicate-code `circ`=circular-deps `in/out`=dependency-coupling
+- `TOTALS`: Total files, lines, functions, classes, avg complexity, avg depth | Issues counts
 - Language rows: % of codebase, file/line/function/class/import/export counts, avg complexity
-- `TOP_FN`: Most common function signatures (count × lang : signature)
-- `TOP_CLS`: Most common classes
-- `TOP_IMP`: Most frequent imports
-- `TOP_CALLS`: Most called functions/APIs
-- `HOT`: Complexity hotspots (cx=complexity, d=depth)
-- `ORPH`: Orphaned files (not imported anywhere)
-- `COUP`: Coupling (files with most dependencies, in=imported by, out=imports from)
-- `DUP`: Duplicate code (count × hash : files)
-- `CIRC`: Circular dependencies
-- `SIZE`: Largest files
-- `DIST`: File size distribution
-- `IDS`: Most used identifiers/variables
+- `TOP-FUNCTIONS(most-defined)`: Most common function signatures (count × lang : signature)
+- `TOP-CLASSES(most-defined)`: Most common classes
+- `TOP-IMPORTS(common-deps)`: Most frequent imports
+- `TOP-CALLS(frequent-invocations)`: Most called functions/APIs
+- `HOTSPOTS(complex-files)`: Complexity hotspots - refactor candidates (cx=complexity, d=depth)
+- `ORPHANS(unused-or-entries)`: Files not imported anywhere - potential dead code or entry points
+- `COUPLING(central-files)`: Files with most dependencies - central hubs, refactor candidates (in←imports, out→uses)
+- `DUPLICATES(code-clones)`: AST-based structural clones - consolidation candidates (count × hash : files)
+- `CIRCULAR-DEPS(import-cycles)`: Import cycles - architecture issues
+- `LARGEST-FILES(split-candidates)`: Largest files - maintainability risk
+- `FILE-SIZE-DISTRIBUTION`: File size distribution by line count
+- `TOP-IDENTIFIERS(common-names)`: Most used variable names in codebase
 
 ## Supported Languages
 
