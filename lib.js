@@ -1,0 +1,182 @@
+import Parser from 'tree-sitter';
+import { readFileSync, readdirSync, statSync } from 'fs';
+import { join, extname, relative } from 'path';
+import JavaScript from 'tree-sitter-javascript';
+import TypeScript from 'tree-sitter-typescript';
+import Python from 'tree-sitter-python';
+import Rust from 'tree-sitter-rust';
+import Go from 'tree-sitter-go';
+import C from 'tree-sitter-c';
+import Cpp from 'tree-sitter-cpp';
+import Java from 'tree-sitter-java';
+import CSharp from 'tree-sitter-c-sharp';
+import Ruby from 'tree-sitter-ruby';
+import PHP from 'tree-sitter-php';
+import JSON from 'tree-sitter-json';
+import { extractEntities, calculateMetrics } from './analyzer.js';
+import { formatUltraCompact } from './compact-formatter.js';
+
+const LANGUAGES = {
+  '.js': { parser: JavaScript, name: 'JavaScript' },
+  '.mjs': { parser: JavaScript, name: 'JavaScript' },
+  '.cjs': { parser: JavaScript, name: 'JavaScript' },
+  '.jsx': { parser: JavaScript, name: 'JSX' },
+  '.ts': { parser: TypeScript.typescript, name: 'TypeScript' },
+  '.tsx': { parser: TypeScript.tsx, name: 'TSX' },
+  '.py': { parser: Python, name: 'Python' },
+  '.rs': { parser: Rust, name: 'Rust' },
+  '.go': { parser: Go, name: 'Go' },
+  '.c': { parser: C, name: 'C' },
+  '.h': { parser: C, name: 'C' },
+  '.cpp': { parser: Cpp, name: 'C++' },
+  '.cc': { parser: Cpp, name: 'C++' },
+  '.cxx': { parser: Cpp, name: 'C++' },
+  '.hpp': { parser: Cpp, name: 'C++' },
+  '.java': { parser: Java, name: 'Java' },
+  '.cs': { parser: CSharp, name: 'C#' },
+  '.rb': { parser: Ruby, name: 'Ruby' },
+  '.php': { parser: PHP, name: 'PHP' },
+  '.json': { parser: JSON, name: 'JSON' }
+};
+
+const IGNORE_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'coverage', '.next', 'out', 'vendor', 'target']);
+const MAX_FILE_SIZE = 1024 * 1024;
+
+function getLanguage(filepath) {
+  const ext = extname(filepath);
+  return LANGUAGES[ext];
+}
+
+function* walkDir(dir, baseDir = dir) {
+  const entries = readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (!IGNORE_DIRS.has(entry.name)) {
+        yield* walkDir(fullPath, baseDir);
+      }
+    } else if (entry.isFile()) {
+      const lang = getLanguage(entry.name);
+      if (lang) {
+        try {
+          const stat = statSync(fullPath);
+          if (stat.size <= MAX_FILE_SIZE) {
+            yield { path: fullPath, relativePath: relative(baseDir, fullPath), lang };
+          }
+        } catch (e) {}
+      }
+    }
+  }
+}
+
+function analyzeTree(tree, sourceCode) {
+  const stats = {
+    functions: 0,
+    classes: 0,
+    imports: 0,
+    exports: 0,
+    complexity: 0,
+    lines: sourceCode.split('\n').length
+  };
+
+  function traverse(node) {
+    const type = node.type;
+
+    if (type.includes('function') && type.includes('declaration')) stats.functions++;
+    if (type.includes('class') && type.includes('declaration')) stats.classes++;
+    if (type.includes('import')) stats.imports++;
+    if (type.includes('export')) stats.exports++;
+    if (['if_statement', 'while_statement', 'for_statement', 'case_statement', 'catch_clause'].includes(type)) {
+      stats.complexity++;
+    }
+
+    for (let child of node.children) {
+      traverse(child);
+    }
+  }
+
+  traverse(tree.rootNode);
+  return stats;
+}
+
+function analyzeCodebase(rootPath = '.') {
+  const parser = new Parser();
+  const stats = { files: 0, totalLines: 0, byLanguage: {}, errors: [] };
+  const entities = {};
+  const metrics = { depths: [], hotspots: [] };
+
+  for (const { path, relativePath, lang } of walkDir(rootPath)) {
+    try {
+      parser.setLanguage(lang.parser);
+      const source = readFileSync(path, 'utf8');
+      const tree = parser.parse(source);
+
+      const basicStats = analyzeTree(tree, source);
+      const ents = extractEntities(tree, source, lang.name);
+      const mets = calculateMetrics(tree, source);
+
+      stats.files++;
+      stats.totalLines += basicStats.lines;
+
+      if (!stats.byLanguage[lang.name]) {
+        stats.byLanguage[lang.name] = { files: 0, lines: 0, functions: 0, classes: 0, imports: 0, exports: 0, complexity: 0 };
+      }
+
+      const langStats = stats.byLanguage[lang.name];
+      langStats.files++;
+      langStats.lines += basicStats.lines;
+      langStats.functions += basicStats.functions;
+      langStats.classes += basicStats.classes;
+      langStats.imports += basicStats.imports;
+      langStats.exports += basicStats.exports;
+      langStats.complexity += basicStats.complexity;
+
+      if (!entities[lang.name]) {
+        entities[lang.name] = { functions: new Map(), classes: new Map(), imports: new Set(), exports: new Set(), patterns: new Map() };
+      }
+
+      for (const [sig, data] of ents.functions) {
+        const existing = entities[lang.name].functions.get(sig) || { count: 0, ...data };
+        existing.count += data.count;
+        entities[lang.name].functions.set(sig, existing);
+      }
+
+      for (const [name, data] of ents.classes) {
+        const existing = entities[lang.name].classes.get(name) || { count: 0, ...data };
+        existing.count += data.count;
+        entities[lang.name].classes.set(name, existing);
+      }
+
+      for (const imp of ents.imports) entities[lang.name].imports.add(imp);
+      for (const exp of ents.exports) entities[lang.name].exports.add(exp);
+
+      for (const [pattern, count] of ents.patterns) {
+        entities[lang.name].patterns.set(pattern, (entities[lang.name].patterns.get(pattern) || 0) + count);
+      }
+
+      metrics.depths.push(mets.maxDepth);
+
+      if (mets.branches > 10 || mets.maxDepth > 8) {
+        metrics.hotspots.push({
+          file: relativePath,
+          cx: mets.branches,
+          depth: mets.maxDepth,
+          loc: mets.loc
+        });
+      }
+    } catch (e) {
+      stats.errors.push({ file: relativePath, error: e.message });
+    }
+  }
+
+  metrics.hotspots.sort((a, b) => b.cx + b.depth - (a.cx + a.depth));
+
+  return { stats, entities, metrics };
+}
+
+export function analyze(rootPath = '.') {
+  const aggregated = analyzeCodebase(rootPath);
+  return formatUltraCompact(aggregated);
+}
+
+export { analyzeCodebase, formatUltraCompact };

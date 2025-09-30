@@ -31,19 +31,32 @@ npm install
 
 ## Usage
 
+### CLI
+
 Analyze current directory:
 ```bash
-npx thorns
+npx mcp-thorns
 ```
 
 Analyze specific directory:
 ```bash
-npx thorns /path/to/codebase
+npx mcp-thorns /path/to/codebase
 ```
 
-Local usage after install:
-```bash
-node index.js [directory]
+### Programmatic API
+
+```javascript
+import { analyze } from 'mcp-thorns';
+
+// Get ultra-compact analysis as a string
+const output = analyze('./path/to/codebase');
+console.log(output);
+
+// Or use the raw functions for custom formatting
+import { analyzeCodebase, formatUltraCompact } from 'mcp-thorns';
+
+const data = analyzeCodebase('./path/to/codebase');
+const formatted = formatUltraCompact(data);
 ```
 
 ## Output Format
