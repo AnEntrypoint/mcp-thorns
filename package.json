@@ -3,9 +3,21 @@
   "version": "1.0.0",
   "description": "Ultra-compact tree-sitter codebase analysis tool - maximum insight, minimal output",
   "type": "module",
+  "main": "./lib.js",
+  "exports": {
+    ".": "./lib.js"
+  },
   "bin": {
     "thorns": "./index.js"
   },
+  "files": [
+    "index.js",
+    "lib.js",
+    "analyzer.js",
+    "compact-formatter.js",
+    "queries.js",
+    "README.md"
+  ],
   "scripts": {
     "analyze": "node index.js"
   },
