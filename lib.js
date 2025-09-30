@@ -15,6 +15,8 @@ import PHP from 'tree-sitter-php';
 import JSON from 'tree-sitter-json';
 import { extractEntities, calculateMetrics } from './analyzer.js';
 import { formatUltraCompact } from './compact-formatter.js';
+import { extractDependencies, buildDependencyGraph, analyzeModules } from './dependency-analyzer.js';
+import { extractAdvancedMetrics, detectDuplication, hashFunction, detectCircularDeps, analyzeFileSizes } from './advanced-metrics.js';
 
 const LANGUAGES = {
   '.js': { parser: JavaScript, name: 'JavaScript' },
@@ -104,6 +106,8 @@ function analyzeCodebase(rootPath = '.') {
   const stats = { files: 0, totalLines: 0, byLanguage: {}, errors: [] };
   const entities = {};
   const metrics = { depths: [], hotspots: [] };
+  const fileMetrics = {};
+  const fileAnalysis = {};
 
   for (const { path, relativePath, lang } of walkDir(rootPath)) {
     try {
@@ -114,6 +118,8 @@ function analyzeCodebase(rootPath = '.') {
       const basicStats = analyzeTree(tree, source);
       const ents = extractEntities(tree, source, lang.name);
       const mets = calculateMetrics(tree, source);
+      const deps = extractDependencies(tree, source, relativePath, lang.name);
+      const advanced = extractAdvancedMetrics(tree, source);
 
       stats.files++;
       stats.totalLines += basicStats.lines;
@@ -164,6 +170,33 @@ function analyzeCodebase(rootPath = '.') {
           loc: mets.loc
         });
       }
+
+      // Store for dependency/duplication analysis
+      fileAnalysis[relativePath] = {
+        imports: deps.imports,
+        exports: deps.exports,
+        importPaths: deps.importPaths,
+        exportedNames: deps.exportedNames
+      };
+
+      fileMetrics[relativePath] = {
+        loc: mets.loc,
+        advanced,
+        functionHashes: {}
+      };
+
+      // Hash functions for duplication detection
+      function collectFunctionHashes(node) {
+        if (node.type.includes('function') && node.type.includes('declaration') ||
+            node.type === 'method_definition' || node.type === 'function_item') {
+          const hash = hashFunction(node);
+          const sig = node.text.slice(0, 50);
+          fileMetrics[relativePath].functionHashes[sig] = hash;
+        }
+        for (const child of node.children) collectFunctionHashes(child);
+      }
+      collectFunctionHashes(tree.rootNode);
+
     } catch (e) {
       stats.errors.push({ file: relativePath, error: e.message });
     }
@@ -171,7 +204,41 @@ function analyzeCodebase(rootPath = '.') {
 
   metrics.hotspots.sort((a, b) => b.cx + b.depth - (a.cx + a.depth));
 
-  return { stats, entities, metrics };
+  // Advanced analysis
+  const depGraph = buildDependencyGraph(fileAnalysis);
+  const duplicates = detectDuplication(fileMetrics);
+  const circular = detectCircularDeps(depGraph);
+  const fileSizes = analyzeFileSizes(fileMetrics);
+  const modules = analyzeModules(fileAnalysis, rootPath);
+
+  // Aggregate advanced metrics
+  const allIdentifiers = new Map();
+  const allFuncLengths = [];
+  const allFuncParams = [];
+
+  for (const [file, data] of Object.entries(fileMetrics)) {
+    if (data.advanced) {
+      for (const [id, count] of data.advanced.identifiers) {
+        allIdentifiers.set(id, (allIdentifiers.get(id) || 0) + count);
+      }
+      allFuncLengths.push(...data.advanced.functionLengths);
+      allFuncParams.push(...data.advanced.functionParams);
+    }
+  }
+
+  return {
+    stats,
+    entities,
+    metrics,
+    depGraph,
+    duplicates,
+    circular,
+    fileSizes,
+    modules,
+    identifiers: allIdentifiers,
+    funcLengths: allFuncLengths,
+    funcParams: allFuncParams
+  };
 }
 
 export function analyze(rootPath = '.') {
