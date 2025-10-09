@@ -17,25 +17,6 @@ Cross-platform codebase analysis using tree-sitter for maximum insight with mini
 - **Ultra-compact**: Zero unnecessary tokens
 - **Fast**: Native parsers, ~1000 files/sec, skips 96%+ of irrelevant files
 
-## Installation
-
-```bash
-npx -y thorns
-```
-
-Or install globally:
-
-```bash
-npm install -g thorns
-thorns [directory]
-```
-
-Or install locally:
-
-```bash
-npm install
-```
-
 ## Usage
 
 ### CLI
