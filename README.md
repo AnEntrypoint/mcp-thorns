@@ -42,12 +42,12 @@ npm install
 
 Analyze current directory:
 ```bash
-npx mcp-thorns
+npx -y mcp-thorns@latest
 ```
 
 Analyze specific directory:
 ```bash
-npx mcp-thorns /path/to/codebase
+npx -y mcp-thorns@latest /path/to/codebase
 ```
 
 ### Programmatic API
