@@ -20,7 +20,7 @@ Cross-platform codebase analysis using tree-sitter for maximum insight with mini
 ## Installation
 
 ```bash
-npx thorns [directory]
+npx -y thorns
 ```
 
 Or install globally:
