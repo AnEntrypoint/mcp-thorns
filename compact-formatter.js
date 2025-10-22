@@ -22,6 +22,11 @@ export function formatUltraCompact(aggregated) {
     output += `## 🛠️ Tech Stack\n\n${techStack}\n`;
   }
 
+  const features = getFeatures(fileMetrics, identifiers);
+  if (features) {
+    output += `## 🎯 Features\n\n${features}\n`;
+  }
+
   const codeOrg = getCodeOrganization(fileSizes, funcLengths, funcParams, totalFn, totalCls, stats.files, fileMetrics);
   if (codeOrg) {
     output += `## 📊 Code Organization\n\n${codeOrg}\n`;
@@ -108,10 +113,14 @@ function generateDetailedFlow(depGraph, entities, totalFiles, circular) {
     flow.push(`**Hubs:** ${hubDesc}`);
   }
 
-  const leaves = connections.filter(c => c.in === 0 && c.out > 0).slice(0, 6);
-  if (leaves.length > 0) {
+  const leaves = connections.filter(c => c.in === 0 && c.out > 0).sort((a, b) => b.out - a.out).slice(0, 8);
+  const totalLeaves = connections.filter(c => c.in === 0 && c.out > 0).length;
+  if (leaves.length > 0 && totalLeaves <= 20) {
     const leafDesc = leaves.map(l => `${l.file}(${l.out}↑)`).join(', ');
-    flow.push(`**Leaf nodes:** ${leafDesc}${connections.filter(c => c.in === 0 && c.out > 0).length > 6 ? ` (+${connections.filter(c => c.in === 0 && c.out > 0).length - 6})` : ''}`);
+    flow.push(`**Leaf nodes:** ${leafDesc}${totalLeaves > 8 ? ` (+${totalLeaves - 8})` : ''}`);
+  } else if (totalLeaves > 20) {
+    const topLeaves = leaves.slice(0, 4).map(l => `${l.file}(${l.out}↑)`).join(', ');
+    flow.push(`**Leaf nodes:** ${topLeaves} (+${totalLeaves - 4} entry points)`);
   }
 
   const trueOrphans = connections.filter(c => c.total === 0 && !isObviousEntryPoint(c.fullPath));
@@ -316,6 +325,46 @@ function getCompactIssues(circular, duplicates, metrics, fileSizes, fileMetrics)
   }
 
   return issues;
+}
+
+function getFeatures(fileMetrics, identifiers) {
+  const featureAreas = new Map();
+
+  for (const [filePath, metrics] of Object.entries(fileMetrics)) {
+    const fileName = filePath.split('/').pop().replace(/\.\w+$/, '');
+
+    const keywords = [
+      'auth', 'admin', 'marketplace', 'mcp', 'conversation', 'document',
+      'streaming', 'server', 'client', 'api', 'test', 'tool', 'handler',
+      'manager', 'provider', 'service', 'component', 'hook', 'util', 'config'
+    ];
+
+    for (const keyword of keywords) {
+      if (fileName.toLowerCase().includes(keyword) || filePath.toLowerCase().includes(keyword)) {
+        if (!featureAreas.has(keyword)) {
+          featureAreas.set(keyword, { files: [], functions: 0, lines: 0 });
+        }
+        const area = featureAreas.get(keyword);
+        area.files.push(filePath.split('/').pop());
+        area.functions += metrics.functions?.length || 0;
+        area.lines += metrics.loc || 0;
+      }
+    }
+  }
+
+  const sorted = Array.from(featureAreas.entries())
+    .filter(([_, data]) => data.files.length >= 2)
+    .sort((a, b) => b[1].lines - a[1].lines)
+    .slice(0, 8);
+
+  if (sorted.length === 0) return '';
+
+  const featureList = sorted.map(([name, data]) => {
+    const topFiles = [...new Set(data.files)].slice(0, 3).join(', ');
+    return `**${name}:** ${data.files.length}f, ${data.functions}fn (${topFiles})`;
+  }).join('\n');
+
+  return featureList;
 }
 
 function getTechStack(entities, identifiers) {
