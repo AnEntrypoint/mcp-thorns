@@ -1,203 +1,134 @@
 # Thorns - Ultra-Compact Codebase Intelligence
 
-**Maximum structural insight with minimum tokens.** Replaces mermaid flow charts with instant, self-explanatory architecture analysis.
+Cross-platform codebase analysis using tree-sitter for maximum insight with minimal output.
 
-## ✨ What It Does
+## Features
 
-Thorns provides an **instant structural overview** of any codebase in a format that's:
-- **Ultra-compact** - Zero waste, maximum information density
-- **Self-explanatory** - Any agent can understand without prior knowledge
-- **Comprehensive** - Entry points, flow patterns, modules, dependencies, issues
-- **Actionable** - Only shows problems that need fixing
+- **Cross-platform**: WSL, Linux, Windows, macOS (arm64/x64)
+- **12 languages**: JavaScript, TypeScript, Python, Rust, Go, C/C++, Java, C#, Ruby, PHP, JSON
+- **Dependency graph**: File-level imports, orphans, circular deps
+- **Code duplication**: AST-based clone detection
+- **Coupling metrics**: Most connected files
+- **File sizes**: Distribution and largest files
+- **Identifier usage**: Most common variables/functions
+- **Complexity hotspots**: High cx/depth files
+- **Ultra-comprehensive ignoring**: Auto-loads .gitignore, .dockerignore, .npmignore + 200+ built-in patterns
+- **Smart filtering**: Ignores node_modules, target, vendor, dist, build, .cache, etc. across all languages
+- **Ultra-compact**: Zero unnecessary tokens
+- **Fast**: Native parsers, ~1000 files/sec, skips 96%+ of irrelevant files
 
-## 🎯 Perfect For Hook Mode
-
-```bash
-# Instant codebase snapshot for Claude Code hooks
-npx mcp-thorns .
-```
-
-**Sample Output:**
-```
-# 166f 35.3kL 267fn 97cls cx8.3
-
-**Langs:** Jav99% JSO1%
-
-## 🔄 Architecture
-
-**Entry:** three(13↓) ↓
-**Distributors:** three(13↓) → 13+ files
-**Clusters:** src(17f,30cx)
-**External:** lodash-es, react, three, @fastify (+2)
-**Pattern:** Linear flow system
-## 🚨 Issues
-
-- 🔄 Circular: three.js→three.js
-- 📋 Duplication: 10 clones (5+ copies)
-- 🔥 Complexity: ClientControls.js, Video.js (+50)
-- 📁 Large files: Video.js:1166L, UI.js:1113L (+8)
-
-## 📦 Modules
-
-- src: 17f, 30cx (100% activity)
-```
-
-## 📊 Ultra-Compact Format
-
-**Abbreviations (intuitive):**
-- `f` = files, `L` = lines, `fn` = functions, `cls` = classes, `cx` = complexity
-- `↓` = imported by, `↑` = imports from, `→` = flows to
-- Numbers in parentheses = connection counts
-
-**Sections Explained:**
-- **Header**: File count, lines, functions, classes, average complexity
-- **Langs**: Language distribution with percentages
-- **Architecture**: Complete import/export flow analysis
-  - **Entry**: Entry points (files others depend on)
-  - **Core**: Main execution path through system
-  - **Distributors**: Files that spread to many consumers
-  - **Clusters**: Module groupings with connectivity
-  - **External**: Key external dependencies
-  - **Pattern**: Architecture type (Linear, Hub-and-spoke, Multi-entry)
-- **Issues**: Critical problems needing attention
-  - **Circular**: Import cycles breaking architecture
-  - **Duplication**: Code clones for consolidation
-  - **Complexity**: Files needing refactoring
-  - **Large files**: Files too big to maintain
-- **Modules**: Structural breakdown by directory
-
-## 🚀 Installation
-
-```bash
-# Quick analysis (no installation needed)
-npx mcp-thorns [directory]
-
-# Install globally
-npm install -g mcp-thorns
-thorns [directory]
-
-# Install locally for API use
-npm install mcp-thorns
-```
-
-## 💻 Usage
+## Usage
 
 ### CLI
-```bash
-# Analyze current directory
-npx mcp-thorns
 
-# Analyze specific directory
-npx mcp-thorns /path/to/codebase
+Analyze current directory:
+```bash
+npx -y mcp-thorns@latest
+```
+
+Analyze specific directory:
+```bash
+npx -y mcp-thorns@latest /path/to/codebase
 ```
 
 ### Programmatic API
+
 ```javascript
 import { analyze } from 'mcp-thorns';
 
-// Get ultra-compact analysis
-const output = analyze('./src');
+// Get ultra-compact analysis as a string
+const output = analyze('./path/to/codebase');
 console.log(output);
 
-// Raw data for custom processing
+// Or use the raw functions for custom formatting
 import { analyzeCodebase, formatUltraCompact } from 'mcp-thorns';
-const data = analyzeCodebase('./src');
+
+const data = analyzeCodebase('./path/to/codebase');
 const formatted = formatUltraCompact(data);
 ```
 
-## 🏗️ Architecture Insights
+## Output Format
 
-Thorns replaces visual flow charts with detailed text analysis:
+Ultra-compact cheat sheet with maximum information density:
 
-**Flow Patterns Detected:**
-- **Linear flow system**: Sequential execution path
-- **Hub-and-spoke architecture**: Central coordinator with satellites
-- **Multi-entry system**: Multiple independent entry points
-- **Decentralized modules**: Independent components
-- **Isolated components**: Disconnected code
-
-**Connection Analysis:**
-- **Entry points**: Files with many importers, few dependencies
-- **Distributors**: Files that spread code throughout system
-- **Core hubs**: Most connected architectural components
-- **Orphans**: Unused files (excluding obvious entry points)
-- **Clusters**: Logical module groupings
-
-## 🛠️ Supported Languages
-
-- **JavaScript** (.js, .mjs, .cjs, .jsx)
-- **TypeScript** (.ts, .tsx)
-- **Python** (.py)
-- **Rust** (.rs)
-- **Go** (.go)
-- **C/C++** (.c, .cpp, .cc, .cxx, .h, .hpp)
-- **Java** (.java)
-- **C#** (.cs)
-- **Ruby** (.rb)
-- **PHP** (.php)
-- **JSON** (.json)
-
-## 🚫 Smart Filtering
-
-Automatically ignores build artifacts and non-essential files:
-- Build directories: `dist/`, `build/`, `out/`, `target/`
-- Dependencies: `node_modules/`, `vendor/`, `Pods/`
-- Caches: `.cache/`, `.next/`, `.nuxt/`, `coverage/`
-- Config: `.vscode/`, `.idea/`, OS files
-- Generated files > 200KB (build artifacts, minified code)
-
-**Files > 200KB are excluded** because they're typically build artifacts, not source code.
-
-## 🎯 Use Cases
-
-### **Hook Mode Integration**
-Perfect for Claude Code hooks to provide instant context:
-```bash
-# Claude Code hook setup
-~/.claude/thorns-context-hook.sh
+```
+━━━ 47f 8.5kL 44fn 5cls cx:7.9 d:21.7 ━━━
+JA 97% 40f 8.3kL 44fn 5c 575i 96e cx:7.9
+JS 3% 7f 214L 0fn 0c 0i 0e cx:0
+━━━ fn ━━━
+7× Ja:main(1)
+6× Ja:uuid(1)
+5× Ja:createApp(1)
+4× Ja:verifyApps(1)
+3× Ja:processNextApp(1)
+━━━ cls ━━━
+2× Ja:StatelessMCPTools
+2× Ja:ValidationSystem
+━━━ imports ━━━
+2× import { CallToolRequestSchema...
+1× import WebSocket from 'ws';
+━━━ calls ━━━
+504× console.log
+63× ws.on
+51× setTimeout
+━━━ ⚠ hotspots ━━━
+cx:57 d:19 src/validation-system.js
+cx:20 d:28 src/stateless-mcp-tools-basic.js
 ```
 
-### **Code Reviews**
-Instant understanding of codebase structure before diving in.
+**Legend:**
+- Abbreviations: `f`=files `L`=lines `fn`=functions `cls`=classes `i`=imports `e`=exports `cx`=complexity `d`=AST-depth `(N)`=param-count
+- Issues: `orph`=orphaned-files `dup`=duplicate-code `circ`=circular-deps `in/out`=dependency-coupling
+- `TOTALS`: Total files, lines, functions, classes, avg complexity, avg depth | Issues counts
+- Language rows: % of codebase, file/line/function/class/import/export counts, avg complexity
+- `TOP-FUNCTIONS(most-defined)`: Most common function signatures (count × lang : signature)
+- `TOP-CLASSES(most-defined)`: Most common classes
+- `TOP-IMPORTS(common-deps)`: Most frequent imports
+- `TOP-CALLS(frequent-invocations)`: Most called functions/APIs
+- `HOTSPOTS(complex-files)`: Complexity hotspots - refactor candidates (cx=complexity, d=depth)
+- `ORPHANS(unused-or-entries)`: Files not imported anywhere - potential dead code or entry points
+- `COUPLING(central-files)`: Files with most dependencies - central hubs, refactor candidates (in←imports, out→uses)
+- `DUPLICATES(code-clones)`: AST-based structural clones - consolidation candidates (count × hash : files)
+- `CIRCULAR-DEPS(import-cycles)`: Import cycles - architecture issues
+- `LARGEST-FILES(split-candidates)`: Largest files - maintainability risk
+- `FILE-SIZE-DISTRIBUTION`: File size distribution by line count
+- `TOP-IDENTIFIERS(common-names)`: Most used variable names in codebase
 
-### **Architecture Documentation**
-Generate structural overviews for documentation.
+## Supported Languages
 
-### **Refactoring Planning**
-Identify complexity hotspots, duplication, and architectural issues.
+- JavaScript (.js, .mjs, .cjs, .jsx)
+- TypeScript (.ts, .tsx)
+- Python (.py)
+- Rust (.rs)
+- Go (.go)
+- C (.c, .h)
+- C++ (.cpp, .cc, .cxx, .hpp)
+- Java (.java)
+- C# (.cs)
+- Ruby (.rb)
+- PHP (.php)
+- JSON (.json)
 
-### **Onboarding**
-Quick structural orientation for new team members.
+## Ignored Directories
 
-## ⚡ Performance
+Automatically skips: `node_modules`, `.git`, `dist`, `build`, `coverage`, `.next`, `out`, `vendor`, `target`
 
-- **Fast**: ~1000 files/second with native tree-sitter parsers
-- **Memory efficient**: Processes files incrementally
-- **Smart filtering**: Skips 95%+ of irrelevant files automatically
-- **Cross-platform**: Works on WSL, Linux, macOS, Windows
+## Requirements
 
-## 🔧 Requirements
+- Node.js >= 18.0.0
+- Prebuilt binaries download automatically for supported platforms
 
-- **Node.js** >= 18.0.0
-- **No additional dependencies** - tree-sitter parsers included
+## How It Works
 
-## 📈 Why Thorns?
+1. Walks directory tree, filtering by extension
+2. Parses each file with tree-sitter
+3. Analyzes AST for functions, classes, imports, exports, complexity
+4. Aggregates statistics by language
+5. Outputs compact summary
 
-1. **Instant Understanding**: Get structural insight in seconds, not hours
-2. **Zero Learning Curve**: Output is self-explanatory
-3. **Comprehensive**: Replaces multiple analysis tools
-4. **Token Efficient**: Perfect for AI assistant integration
-5. **Actionable**: Focuses on problems that matter
-6. **Universal**: Works across languages and project types
+## Performance
 
-## 🤝 Contributing
-
-Contributions welcome! Please ensure all changes maintain the ultra-compact, self-explanatory output format.
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) for details.
-
----
-
-**Stop drowning in documentation. Start with insight.** 🚀
+- Skips files > 1MB
+- Uses native parsers (not WASM)
+- Minimal memory footprint
+- Processes ~1000 files/second on modern hardware
