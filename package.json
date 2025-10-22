@@ -1,7 +1,7 @@
 {
   "name": "mcp-thorns",
-  "version": "2.2.0",
-  "description": "Ultra-compact tree-sitter codebase analysis tool - maximum insight, minimal output",
+  "version": "3.0.0",
+  "description": "Location-based codebase analysis - find everything by file:line:name, complete import/export flow, zero stats",
   "type": "module",
   "main": "./lib.js",
   "exports": {
@@ -27,7 +27,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/AnEntrypoint/mcp-thorns.git"
+    "url": "git+https://github.com/AnEntrypoint/mcp-thorns.git"
   },
   "author": "AnEntrypoint",
   "license": "MIT",

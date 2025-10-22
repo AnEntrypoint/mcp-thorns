@@ -42,7 +42,7 @@ const LANGUAGES = {
   '.json': { parser: JSON, name: 'JSON' }
 };
 
-const MAX_FILE_SIZE = 1024 * 1024;
+const MAX_FILE_SIZE = 200 * 1024; // 200KB - anything larger is build/generated code
 
 function getLanguage(filepath) {
   const ext = extname(filepath);
@@ -74,6 +74,36 @@ function* walkDir(dir, baseDir = dir, ignorePatterns = new Set()) {
       }
     }
   }
+}
+
+function extractFunctionName(node) {
+  for (const child of node.children) {
+    if (child.type === 'identifier' || child.type === 'property_identifier') {
+      return child.text;
+    }
+  }
+  return 'anonymous';
+}
+
+function extractClassName(node) {
+  for (const child of node.children) {
+    if (child.type === 'identifier' || child.type === 'type_identifier') {
+      return child.text;
+    }
+  }
+  return 'Anonymous';
+}
+
+function countNodeParams(node) {
+  let count = 0;
+  function traverse(n) {
+    if (n.type === 'parameter' || n.type === 'formal_parameter' || n.type.includes('param')) {
+      count++;
+    }
+    for (const child of n.children) traverse(child);
+  }
+  traverse(node);
+  return count;
 }
 
 function analyzeTree(tree, sourceCode) {
@@ -114,7 +144,7 @@ function analyzeCodebase(rootPath = '.') {
   const fileMetrics = {};
   const fileAnalysis = {};
 
-  // Build comprehensive ignore set
+  // Build comprehensive ignore set - always exclude build artifacts
   const ignorePatterns = buildIgnoreSet(rootPath);
 
   for (const { path, relativePath, lang } of walkDir(rootPath, rootPath, ignorePatterns)) {
@@ -190,18 +220,40 @@ function analyzeCodebase(rootPath = '.') {
       fileMetrics[relativePath] = {
         loc: mets.loc,
         advanced,
-        functionHashes: {}
+        functionHashes: {},
+        functions: [],
+        classes: []
       };
 
-      // Hash functions for duplication detection
-      function collectFunctionHashes(node) {
+      function collectFunctionHashes(node, depth = 0) {
         if (node.type.includes('function') && node.type.includes('declaration') ||
             node.type === 'method_definition' || node.type === 'function_item') {
           const hash = hashFunction(node);
           const sig = node.text.slice(0, 50);
           fileMetrics[relativePath].functionHashes[sig] = hash;
+
+          const name = extractFunctionName(node);
+          const lines = node.text.split('\n').length;
+          const startLine = node.startPosition.row + 1;
+          fileMetrics[relativePath].functions.push({
+            name,
+            lines,
+            startLine,
+            params: countNodeParams(node)
+          });
         }
-        for (const child of node.children) collectFunctionHashes(child);
+
+        if (node.type.includes('class') && node.type.includes('declaration') ||
+            node.type === 'struct_item' || node.type === 'enum_item' || node.type === 'interface_declaration') {
+          const name = extractClassName(node);
+          const startLine = node.startPosition.row + 1;
+          fileMetrics[relativePath].classes.push({
+            name,
+            startLine
+          });
+        }
+
+        for (const child of node.children) collectFunctionHashes(child, depth + 1);
       }
       collectFunctionHashes(tree.rootNode);
 
@@ -245,7 +297,8 @@ function analyzeCodebase(rootPath = '.') {
     modules,
     identifiers: allIdentifiers,
     funcLengths: allFuncLengths,
-    funcParams: allFuncParams
+    funcParams: allFuncParams,
+    fileMetrics
   };
 }
 

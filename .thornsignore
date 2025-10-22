@@ -296,9 +296,124 @@ secrets.yml
 *.heapprofile
 
 # === LOCK FILES (optional - can be removed if needed) ===
-# package-lock.json
-# yarn.lock
-# pnpm-lock.yaml
-# Gemfile.lock
-# poetry.lock
-# Pipfile.lock
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+Gemfile.lock
+poetry.lock
+Pipfile.lock
+
+# === CONFIGURATION & METADATA FILES (LOW-VALUE FOR ANALYSIS) ===
+*.config.js
+*.config.ts
+webpack.config.js
+rollup.config.js
+vite.config.js
+tsconfig.json
+jsconfig.json
+babel.config.*
+.babelrc
+.eslintrc.*
+.prettierrc.*
+.stylelintrc.*
+.editorconfig
+.nvmrc
+.env.example
+.env.template
+.env.sample
+*.local
+*.development
+*.production
+
+# === DOCUMENTATION & REFERENCE FILES ===
+*.md
+*.txt
+*.rst
+*.adoc
+docs/
+documentation/
+wiki/
+CHANGELOG*
+HISTORY*
+NEWS*
+UPGRADING*
+FAQ*
+CONTRIBUTING*
+SECURITY*
+LICENSE*
+LICENCE*
+COPYRIGHT*
+NOTICE*
+AUTHORS*
+THIRDPARTY*
+*.orig
+*.rej
+
+# === TEST & COVERAGE FILES ===
+*.test.*
+*.spec.*
+test/
+tests/
+__tests__/
+__mocks__/
+fixtures/
+spec/
+cypress/
+playwright/
+test-results/
+coverage/
+.nyc_output/
+lcov.info
+*.lcov
+.coverage
+pytest.ini
+tox.ini
+jest.config.*
+vitest.config.*
+
+# === GENERATED & BUILD ARTIFACTS ===
+dist/
+build/
+out/
+target/
+.next/
+.nuxt/
+.gatsby/
+.docusaurus/
+.vuepress/dist/
+site/
+public/
+static/
+.assets/
+.cache/
+.parcel-cache/
+.vite/
+.turbo/
+.tmp/
+temp/
+
+# === DATABASE & DATA FILES ===
+*.db
+*.sqlite
+*.sqlite3
+*.sql
+*.bak
+*.dump
+*.backup
+*.data/
+storage/
+logs/
+*.log
+
+# === IDE & EDITOR SPECIFIC ===
+.vscode/
+.idea/
+*.iml
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+*.sublime-*
+.vs/
