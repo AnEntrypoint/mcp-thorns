@@ -1,6 +1,6 @@
 {
   "name": "mcp-thorns",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Location-based codebase analysis - find everything by file:line:name, complete import/export flow, zero stats",
   "type": "module",
   "main": "./lib.js",
