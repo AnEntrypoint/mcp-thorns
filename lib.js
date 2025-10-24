@@ -1,5 +1,5 @@
 import Parser from 'tree-sitter';
-import { readFileSync, readdirSync, statSync } from 'fs';
+import { readFileSync, readdirSync, statSync, existsSync } from 'fs';
 import { join, extname, relative } from 'path';
 import JavaScript from 'tree-sitter-javascript';
 import TypeScript from 'tree-sitter-typescript';
@@ -136,6 +136,107 @@ function analyzeTree(tree, sourceCode) {
   return stats;
 }
 
+function detectDeadCode(depGraph, fileMetrics, projectContext) {
+  const deadCode = {
+    unusedExports: [],
+    testFiles: [],
+    orphanedFiles: [],
+    possiblyDead: []
+  };
+
+  if (!depGraph?.nodes) return deadCode;
+
+  for (const [file, node] of depGraph.nodes) {
+    const fileName = file.split('/').pop();
+    const isTest = fileName.includes('.test.') || fileName.includes('.spec.') ||
+                   file.includes('/test/') || file.includes('/__tests__/');
+
+    if (isTest) {
+      deadCode.testFiles.push(file);
+      continue;
+    }
+
+    if (node.importedBy.size === 0 && node.exportedNames.size > 0) {
+      const isEntry = fileName.includes('index.') || fileName.includes('main.') ||
+                     fileName.includes('app.') || fileName.includes('server.');
+      const isConfig = fileName.includes('config') || fileName.includes('.config.');
+
+      if (!isEntry && !isConfig) {
+        deadCode.unusedExports.push({
+          file,
+          exports: Array.from(node.exportedNames).slice(0, 3)
+        });
+      }
+    }
+
+    if (node.importedBy.size === 0 && node.importsFrom.size === 0) {
+      deadCode.orphanedFiles.push(file);
+    }
+
+    if (node.importedBy.size === 1 && node.importsFrom.size === 0) {
+      deadCode.possiblyDead.push({
+        file,
+        usedBy: Array.from(node.importedBy)[0]
+      });
+    }
+  }
+
+  return deadCode;
+}
+
+function analyzeProjectContext(rootPath) {
+  const context = {
+    type: 'unknown',
+    framework: null,
+    runtime: null,
+    packageManager: null,
+    scripts: {},
+    dependencies: {},
+    devDependencies: {},
+    entry: null,
+    build: null,
+    test: null
+  };
+
+  try {
+    const packagePath = join(rootPath, 'package.json');
+    if (existsSync(packagePath)) {
+      const pkg = JSON.parse(readFileSync(packagePath, 'utf8'));
+      context.scripts = pkg.scripts || {};
+      context.dependencies = pkg.dependencies || {};
+      context.devDependencies = pkg.devDependencies || {};
+
+      if (pkg.dependencies?.next || pkg.devDependencies?.next) {
+        context.framework = 'Next.js';
+        context.type = 'web-app';
+      } else if (pkg.dependencies?.react || pkg.devDependencies?.react) {
+        context.framework = 'React';
+        context.type = 'web-app';
+      } else if (pkg.dependencies?.vite || pkg.devDependencies?.vite) {
+        context.framework = 'Vite';
+        context.type = 'web-app';
+      }
+
+      if (context.scripts.start) context.entry = context.scripts.start;
+      if (context.scripts.build) context.build = context.scripts.build;
+      if (context.scripts.test) context.test = context.scripts.test;
+    }
+
+    const denoPath = join(rootPath, 'deno.json');
+    if (existsSync(denoPath)) {
+      context.runtime = 'Deno';
+      const deno = JSON.parse(readFileSync(denoPath, 'utf8'));
+      if (deno.tasks) context.scripts = deno.tasks;
+    }
+
+    if (existsSync(join(rootPath, 'yarn.lock'))) context.packageManager = 'yarn';
+    else if (existsSync(join(rootPath, 'pnpm-lock.yaml'))) context.packageManager = 'pnpm';
+    else if (existsSync(join(rootPath, 'package-lock.json'))) context.packageManager = 'npm';
+  } catch (e) {}
+
+  return context;
+}
+
 function analyzeCodebase(rootPath = '.') {
   const parser = new Parser();
   const stats = { files: 0, totalLines: 0, byLanguage: {}, errors: [] };
@@ -143,6 +244,7 @@ function analyzeCodebase(rootPath = '.') {
   const metrics = { depths: [], hotspots: [] };
   const fileMetrics = {};
   const fileAnalysis = {};
+  const projectContext = analyzeProjectContext(rootPath);
 
   // Build comprehensive ignore set - always exclude build artifacts
   const ignorePatterns = buildIgnoreSet(rootPath);
@@ -286,6 +388,8 @@ function analyzeCodebase(rootPath = '.') {
     }
   }
 
+  const deadCode = detectDeadCode(depGraph, fileMetrics, projectContext);
+
   return {
     stats,
     entities,
@@ -298,7 +402,9 @@ function analyzeCodebase(rootPath = '.') {
     identifiers: allIdentifiers,
     funcLengths: allFuncLengths,
     funcParams: allFuncParams,
-    fileMetrics
+    fileMetrics,
+    projectContext,
+    deadCode
   };
 }
 

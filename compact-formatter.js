@@ -1,11 +1,16 @@
 export function formatUltraCompact(aggregated) {
-  const { stats, entities, metrics, depGraph, duplicates, circular, fileSizes, identifiers, funcLengths, funcParams, fileMetrics } = aggregated;
+  const { stats, entities, metrics, depGraph, duplicates, circular, fileSizes, identifiers, funcLengths, funcParams, fileMetrics, projectContext, deadCode } = aggregated;
 
   const totalFn = Object.values(stats.byLanguage).reduce((s, l) => s + l.functions, 0);
   const totalCls = Object.values(stats.byLanguage).reduce((s, l) => s + l.classes, 0);
   const avgCx = totalFn > 0 ? (Object.values(stats.byLanguage).reduce((s, l) => s + l.complexity, 0) / totalFn).toFixed(1) : 0;
 
   let output = '';
+
+  const projectInfo = getProjectInfo(projectContext);
+  if (projectInfo) {
+    output += `## 🎯 ${projectInfo}\n\n`;
+  }
 
   output += `# ${stats.files}f ${k(stats.totalLines)}L ${totalFn}fn ${totalCls}cls cx${avgCx}\n`;
   output += `*f=files L=lines fn=funcs cls=classes cx=complexity ↑=imports ↓=imported-by L0-L3=layers file:line:name*\n\n`;
@@ -47,6 +52,11 @@ export function formatUltraCompact(aggregated) {
     output += `## 🚨 Issues\n\n`;
     issues.forEach(issue => output += `- ${issue}\n`);
     output += '\n';
+  }
+
+  const deadCodeSection = getDeadCodeSection(deadCode);
+  if (deadCodeSection) {
+    output += `## 🧹 Dead Code & Tests\n\n${deadCodeSection}\n`;
   }
 
   const modules = getModuleStructure(depGraph, stats.files, fileSizes);
@@ -611,6 +621,77 @@ function analyzeFlowPattern(connections, entries) {
       return 'Isolated components';
     }
   }
+}
+
+function getProjectInfo(projectContext) {
+  if (!projectContext) return '';
+
+  const parts = [];
+
+  if (projectContext.framework) {
+    parts.push(`${projectContext.framework} ${projectContext.type || 'app'}`);
+  } else if (projectContext.runtime) {
+    parts.push(`${projectContext.runtime} app`);
+  }
+
+  if (projectContext.entry) {
+    parts.push(`| Start: \`${projectContext.entry}\``);
+  }
+
+  if (projectContext.build) {
+    parts.push(`| Build: \`${projectContext.build}\``);
+  }
+
+  const deps = Object.keys(projectContext.dependencies || {});
+  const keyDeps = [];
+  if (deps.includes('express')) keyDeps.push('Express');
+  if (deps.includes('fastify')) keyDeps.push('Fastify');
+  if (deps.includes('@supabase/supabase-js')) keyDeps.push('Supabase');
+  if (deps.includes('firebase')) keyDeps.push('Firebase');
+  if (deps.includes('prisma')) keyDeps.push('Prisma');
+  if (deps.includes('mongoose')) keyDeps.push('MongoDB');
+
+  if (keyDeps.length > 0) {
+    parts.push(`| Deps: ${keyDeps.join(', ')}`);
+  }
+
+  return parts.join(' ');
+}
+
+function getDeadCodeSection(deadCode) {
+  if (!deadCode) return '';
+
+  const sections = [];
+
+  if (deadCode.testFiles?.length > 0) {
+    const testList = deadCode.testFiles.slice(0, 6).map(f => f.split('/').pop()).join(', ');
+    sections.push(`**Test files:** ${testList}${deadCode.testFiles.length > 6 ? ` (+${deadCode.testFiles.length - 6})` : ''}`);
+  }
+
+  if (deadCode.unusedExports?.length > 0) {
+    const unusedList = deadCode.unusedExports.slice(0, 4).map(item => {
+      const fileName = item.file.split('/').pop();
+      const exports = item.exports.join(', ');
+      return `${fileName}(${exports})`;
+    }).join(', ');
+    sections.push(`**Unused exports:** ${unusedList}${deadCode.unusedExports.length > 4 ? ` (+${deadCode.unusedExports.length - 4})` : ''}`);
+  }
+
+  if (deadCode.orphanedFiles?.length > 0) {
+    const orphanList = deadCode.orphanedFiles.slice(0, 6).map(f => f.split('/').pop()).join(', ');
+    sections.push(`**Orphaned:** ${orphanList}${deadCode.orphanedFiles.length > 6 ? ` (+${deadCode.orphanedFiles.length - 6})` : ''}`);
+  }
+
+  if (deadCode.possiblyDead?.length > 0) {
+    const possiblyList = deadCode.possiblyDead.slice(0, 3).map(item => {
+      const fileName = item.file.split('/').pop();
+      const usedBy = item.usedBy.split('/').pop();
+      return `${fileName}←${usedBy}`;
+    }).join(', ');
+    sections.push(`**Single use:** ${possiblyList}${deadCode.possiblyDead.length > 3 ? ` (+${deadCode.possiblyDead.length - 3})` : ''}`);
+  }
+
+  return sections.join('\n');
 }
 
 function k(num) {
