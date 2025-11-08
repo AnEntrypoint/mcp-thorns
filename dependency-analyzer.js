@@ -31,10 +31,31 @@ export function extractDependencies(tree, sourceCode, filePath, lang) {
     return null;
   }
 
+  function extractCommonJSExports(node) {
+    if (node.type === 'assignment_expression' || node.type === 'expression_statement') {
+      const text = node.text;
+      if (text.startsWith('module.exports') || text.startsWith('exports.')) {
+        if (text.includes('{')) {
+          const match = text.match(/\{([^}]+)\}/);
+          if (match) {
+            const names = match[1].split(',').map(n => {
+              const parts = n.trim().split(':');
+              return parts[0].trim();
+            });
+            return names;
+          }
+        } else {
+          const match = text.match(/exports\.(\w+)/);
+          if (match) return [match[1]];
+        }
+      }
+    }
+    return [];
+  }
+
   function traverse(node) {
     const type = node.type;
 
-    // Import statements
     if (type === 'import_statement' || type === 'import_from_statement' ||
         type === 'import_declaration' || type === 'use_declaration') {
       const path = extractImportPath(node);
@@ -44,10 +65,36 @@ export function extractDependencies(tree, sourceCode, filePath, lang) {
       }
     }
 
-    // Export statements
+    if (type === 'call_expression') {
+      const funcNode = node.children[0];
+      if (funcNode && (funcNode.text === 'require' || funcNode.text === 'import')) {
+        for (const child of node.children) {
+          if (child.type === 'arguments') {
+            for (const arg of child.children) {
+              if (arg.type === 'string' || arg.type === 'string_fragment' || arg.type === 'template_string') {
+                const path = arg.text.replace(/['"]/g, '');
+                if (path && !path.includes('${')) {
+                  deps.importPaths.add(path);
+                  deps.imports.add(node.text.slice(0, 80));
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
     if (type.includes('export')) {
       const name = extractExportedName(node);
       if (name) {
+        deps.exportedNames.add(name);
+      }
+      deps.exports.add(node.text.slice(0, 80));
+    }
+
+    const cjsExports = extractCommonJSExports(node);
+    if (cjsExports.length > 0) {
+      for (const name of cjsExports) {
         deps.exportedNames.add(name);
       }
       deps.exports.add(node.text.slice(0, 80));
@@ -131,25 +178,47 @@ export function buildDependencyGraph(fileAnalysis) {
 }
 
 function resolveImport(importPath, fromDir, fileAnalysis) {
-  // Handle relative imports
   if (importPath.startsWith('.')) {
     const resolved = resolve(fromDir, importPath);
 
-    // Try exact match
     if (fileAnalysis[resolved]) return resolved;
 
-    // Try with common extensions
-    const exts = ['.js', '.ts', '.jsx', '.tsx', '.mjs', '.cjs', '/index.js', '/index.ts'];
+    const exts = ['.js', '.ts', '.jsx', '.tsx', '.mjs', '.cjs', '/index.js', '/index.ts', '/index.jsx', '/index.tsx'];
     for (const ext of exts) {
       const withExt = resolved + ext;
       if (fileAnalysis[withExt]) return withExt;
     }
   }
 
-  // For absolute/package imports, try to find in fileAnalysis
-  for (const path of Object.keys(fileAnalysis)) {
-    if (path.includes(importPath)) {
+  const paths = Object.keys(fileAnalysis);
+  const fileName = importPath.split('/').pop();
+
+  for (const path of paths) {
+    const pathParts = path.split('/');
+    const pathFileName = pathParts[pathParts.length - 1];
+
+    if (path.endsWith('/' + importPath) || path.endsWith('/' + importPath + '.js') ||
+        path.endsWith('/' + importPath + '.ts') || path.endsWith('/' + importPath + '.jsx') ||
+        path.endsWith('/' + importPath + '.tsx') || path.endsWith('/' + importPath + '.mjs') ||
+        path.endsWith('/' + importPath + '.cjs')) {
       return path;
+    }
+
+    if (pathFileName === fileName || pathFileName === fileName + '.js' ||
+        pathFileName === fileName + '.ts' || pathFileName === fileName + '.jsx' ||
+        pathFileName === fileName + '.tsx' || pathFileName === fileName + '.mjs' ||
+        pathFileName === fileName + '.cjs') {
+      const importParts = importPath.split('/');
+      let matches = true;
+      for (let i = importParts.length - 1, j = pathParts.length - 1; i >= 0 && j >= 0; i--, j--) {
+        const importPart = importParts[i];
+        const pathPart = pathParts[j].replace(/\.(js|ts|jsx|tsx|mjs|cjs)$/, '');
+        if (importPart !== pathPart) {
+          matches = false;
+          break;
+        }
+      }
+      if (matches) return path;
     }
   }
 
