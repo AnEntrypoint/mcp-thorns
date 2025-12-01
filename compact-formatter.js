@@ -13,7 +13,7 @@ export function formatUltraCompact(aggregated) {
   }
 
   output += `# ${stats.files}f ${k(stats.totalLines)}L ${totalFn}fn ${totalCls}cls cx${avgCx}\n`;
-  output += `*f=files L=lines fn=funcs cls=classes cx=complexity ↑=imports ↓=imported-by L0-L3=layers file:line:name*\n\n`;
+  output += `*f=files L=lines fn=funcs cls=classes cx=complexity ↑=out ↓=in →←↔=flow p=params ×=count (+N)=more | 🔄cycles 🏝️isolated 🔥hot 📋dupes 📁large*\n\n`;
 
   const langs = Object.entries(stats.byLanguage)
     .sort((a, b) => b[1].lines - a[1].lines)
