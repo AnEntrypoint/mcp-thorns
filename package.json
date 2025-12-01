@@ -1,6 +1,6 @@
 {
   "name": "mcp-thorns",
-  "version": "4.2.0",
+  "version": "4.2.1",
   "description": "AI-ready codebase context: project type, dead code, test files, complete flow, all locations",
   "type": "module",
   "main": "./lib.js",

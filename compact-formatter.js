@@ -13,12 +13,13 @@ export function formatUltraCompact(aggregated) {
   }
 
   output += `# ${stats.files}f ${k(stats.totalLines)}L ${totalFn}fn ${totalCls}cls cx${avgCx}\n`;
-  output += `*f=files L=lines fn=funcs cls=classes cx=complexity ↑=out ↓=in →←↔=flow p=params ×=count (+N)=more | 🔄cycles 🏝️isolated 🔥hot 📋dupes 📁large*\n\n`;
+  output += `*Legend: f=files L=lines fn=functions cls=classes cx=avg-complexity | file:line:name(NL)=location Np=params | ↑N=imports-from ↓N=imported-by (N)=occurrences (+N)=more | 🔄circular 🏝️isolated 🔥complex 📋duplicated 📁large*\n\n`;
 
+  const langAbbrev = { JavaScript: 'JS', TypeScript: 'TS', Python: 'Py', Rust: 'Rs', Java: 'Java', 'C++': 'C++', 'C#': 'C#', Ruby: 'Rb', PHP: 'PHP', Go: 'Go', C: 'C', JSON: 'JSON' };
   const langs = Object.entries(stats.byLanguage)
     .sort((a, b) => b[1].lines - a[1].lines)
-    .slice(0, 3)
-    .map(([lang, data]) => `${lang.slice(0,3)}${(data.lines/stats.totalLines*100).toFixed(0)}%`)
+    .slice(0, 4)
+    .map(([lang, data]) => `${langAbbrev[lang] || lang.slice(0,4)}:${(data.lines/stats.totalLines*100).toFixed(0)}%`)
     .join(' ');
   output += `**Langs:** ${langs}\n\n`;
 
