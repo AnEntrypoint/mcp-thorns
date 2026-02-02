@@ -172,3 +172,4 @@ Thorns prioritizes speed by ignoring 96%+ of non-code files.
 - Uses native parsers (not WASM)
 - Minimal memory footprint
 - Processes ~1000 files/second on modern hardware
+# Triggered npm publishing
