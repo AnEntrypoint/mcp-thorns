@@ -19,16 +19,27 @@ Cross-platform codebase analysis using tree-sitter for maximum insight with mini
 
 ## Usage
 
-### CLI
+### Quick Start
 
 Analyze current directory:
 ```bash
-npx -y mcp-thorns@latest
+bunx mcp-thorns
 ```
 
 Analyze specific directory:
 ```bash
-npx -y mcp-thorns@latest /path/to/codebase
+bunx mcp-thorns /path/to/codebase
+```
+
+### Install Globally with Bun
+
+```bash
+bun add -g mcp-thorns
+```
+
+Then use:
+```bash
+thorns /path/to/codebase
 ```
 
 ### Programmatic API
@@ -109,14 +120,43 @@ cx:20 d:28 src/stateless-mcp-tools-basic.js
 - PHP (.php)
 - JSON (.json)
 
-## Ignored Directories
+## Ignored Directories & Files
 
-Automatically skips: `node_modules`, `.git`, `dist`, `build`, `coverage`, `.next`, `out`, `vendor`, `target`
+Automatically skips 200+ patterns including:
+- **VCS**: `.git`, `.svn`, `.hg`, `CVS`
+- **Build artifacts**: `dist`, `build`, `out`, `target`, `vendor`
+- **Language-specific**: `node_modules`, `__pycache__`, `.gradle`, `Pods`, etc.
+- **Caches**: `.cache`, `.next`, `.nuxt`, `.parcel-cache`, `.vite`, `.turbo`
+- **IDEs**: `.vscode`, `.idea`, `.vs`, `.sublime-*`
+- **Test & coverage**: `.pytest_cache`, `.nyc_output`, `coverage`, `htmlcov`
+- **Home directories**: `~/.cache`, `~/.config`, `~/.local`, `~/.npm`, `~/.cargo`, etc. (when analyzing subdirs)
+- **Lock files**: `bun.lockb`, `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`
+- **Custom patterns**: Loads and merges `.gitignore`, `.dockerignore`, `.npmignore`, `.thornsignore`
+
+Thorns prioritizes speed by ignoring 96%+ of non-code files.
 
 ## Requirements
 
-- Node.js >= 18.0.0
+- **Runtime**: Bun >= 1.0
+- **Platform**: Linux, macOS, Windows (WSL2), Docker
 - Prebuilt binaries download automatically for supported platforms
+
+## Compatibility
+
+✅ **Linux**: Ubuntu, Debian, Alpine, Fedora, Arch
+✅ **macOS**: Intel & Apple Silicon (arm64)
+✅ **Windows**: WSL2, Git Bash, PowerShell
+✅ **Docker**: All Linux images (Alpine, Debian, Ubuntu)
+✅ **CI/CD**: GitHub Actions, GitLab CI, Jenkins, CircleCI
+✅ **Cloud**: AWS Lambda (with Node/Bun layer), GCP Cloud Functions
+
+## Execution Methods
+
+| Method | Best For | Requirements |
+|--------|----------|--------------|
+| bunx | Quick analysis | `bun` |
+| Bun global | Repeated use | `bun` |
+| Programmatic | Integration | Bun |
 
 ## How It Works
 
