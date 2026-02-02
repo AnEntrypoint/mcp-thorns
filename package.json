@@ -21,10 +21,18 @@
     "ignore-parser.js",
     ".thornsignore",
     "queries.js",
-    "README.md"
+    "README.md",
+    "run.sh",
+    "one-liner.sh"
   ],
   "scripts": {
     "analyze": "node index.js"
+  },
+  "bun": {
+    "bin": {
+      "mcp-thorns": "./index.js",
+      "thorns": "./index.js"
+    }
   },
   "repository": {
     "type": "git",

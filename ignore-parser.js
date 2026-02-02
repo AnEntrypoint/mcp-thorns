@@ -27,7 +27,15 @@ function getHardcodedIgnores() {
     '.next', '.nuxt', '.cache', '.parcel-cache', '.vite', '.turbo',
     'coverage', '.nyc_output', '.firebase', '.terraform', '.aws',
     '.azure', '.gcloud', '.vscode', '.idea', '.vs', 'bin', 'obj',
-    '.gradle', '.mvn', 'Pods', 'DerivedData', '.bundle'
+    '.gradle', '.mvn', 'Pods', 'DerivedData', '.bundle',
+    // User home hidden folders and caches
+    '.config', '.local', '.ssh', '.gnupg', '.kube', '.docker',
+    '.npm', '.yarn', '.pnpm', '.bun', '.cargo', '.rustup',
+    '.java', '.m2', '.sbt', '.gem', '.rbenv', '.rvm', '.nvm',
+    '.python', '.venv_global', '.conda', '.mamba', '.nodenv',
+    '.pyenv', '.asdf', '.mise', '.vscode-server', '.cursor',
+    '.emacs.d', '.vim', '.neovim', '.nvim', '.zsh', '.bash',
+    '.oh-my-zsh', '.oh-my-bash', '.direnv'
   ]);
 }
 
