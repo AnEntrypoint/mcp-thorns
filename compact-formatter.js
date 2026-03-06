@@ -690,22 +690,25 @@ function getAPISurface(entities, depGraph, fileMetrics) {
     }
   }
 
-  if (fileMetrics) {
+  if (fileMetrics && depGraph?.nodes) {
     const exportedFuncs = [];
     for (const [file, metrics] of Object.entries(fileMetrics)) {
+      const node = depGraph.nodes.get(file);
+      const exportedNames = node ? new Set(node.exportedNames || []) : new Set();
       if (metrics.functions) {
         for (const func of metrics.functions) {
           if (func.name && !func.name.includes('anonymous')) {
-            exportedFuncs.push({ file: file.split('/').pop(), ...func });
+            const isExported = exportedNames.has(func.name);
+            exportedFuncs.push({ file, ...func, isExported });
           }
         }
       }
     }
-    if (exportedFuncs.length > 0) {
-      const topFuncs = exportedFuncs.slice(0, 10)
-        .map(f => `${f.name}(${f.params}p)`)
-        .join(', ');
-      surface.push(`**Functions:** ${topFuncs}${exportedFuncs.length > 10 ? ` (+${exportedFuncs.length - 10})` : ''}`);
+    const exported = exportedFuncs.filter(f => f.isExported);
+    const topFuncs = (exported.length > 0 ? exported : exportedFuncs).slice(0, 12);
+    if (topFuncs.length > 0) {
+      const funcList = topFuncs.map(f => `${f.file.split('/').pop()}:${f.startLine}:${f.name}(${f.params}p)`).join(', ');
+      surface.push(`**Exported fns:** ${funcList}${exportedFuncs.length > 12 ? ` (+${exportedFuncs.length - 12})` : ''}`);
     }
   }
 
@@ -909,34 +912,43 @@ function getDeadCodeSection(deadCode) {
 function getFileIndex(fileMetrics, depGraph, entities) {
   if (!fileMetrics || Object.keys(fileMetrics).length < 2) return '';
 
+  const totalFiles = Object.keys(fileMetrics).length;
+  const limit = totalFiles <= 30 ? totalFiles : 30;
+
   const files = Object.entries(fileMetrics)
     .filter(([path]) => !path.includes('.json') && !path.includes('.test.') && !path.includes('.spec.'))
     .map(([path, metrics]) => {
-      const fileName = path.split('/').pop();
       const coupling = depGraph?.coupling?.get(path);
-      const funcs = metrics.functions?.slice(0, 3).map(f => f.name).filter(n => n && !n.includes('anonymous')) || [];
-      const classes = metrics.classes?.slice(0, 2).map(c => c.name) || [];
+      const node = depGraph?.nodes?.get(path);
+      const exportedNames = node ? Array.from(node.exportedNames || []) : [];
+      const importsFrom = node ? Array.from(node.importsFrom || []) : [];
+      const allFuncs = metrics.functions?.map(f => f.name).filter(n => n && !n.includes('anonymous')) || [];
+      const classes = metrics.classes?.map(c => c.name) || [];
+      const inCount = coupling?.in || 0;
+      const outCount = coupling?.out || 0;
 
-      const parts = [`**${fileName}**`];
-
+      const parts = [`**${path}**`];
       if (metrics.loc) parts.push(`${metrics.loc}L`);
+      if (outCount > 0) parts.push(`${outCount}↑`);
+      if (inCount > 0) parts.push(`${inCount}↓`);
 
-      if (coupling) {
-        if (coupling.out > 0) parts.push(`${coupling.out}↑`);
-        if (coupling.in > 0) parts.push(`${coupling.in}↓`);
+      const syms = [...classes.map(c => `[${c}]`), ...exportedNames.filter(e => !classes.includes(e))].slice(0, 6);
+      if (syms.length > 0) {
+        parts.push(`exports: ${syms.join(', ')}`);
+      } else if (allFuncs.length > 0) {
+        parts.push(`fn: ${allFuncs.slice(0, 5).join(', ')}`);
       }
 
-      const exports = [];
-      if (classes.length > 0) exports.push(...classes.map(c => `[${c}]`));
-      if (funcs.length > 0) exports.push(...funcs.slice(0, 3 - classes.length));
-
-      if (exports.length > 0) {
-        parts.push(`→ ${exports.join(', ')}`);
+      if (inCount >= 3 && importsFrom.length > 0) {
+        const fromNames = importsFrom.slice(0, 3).map(f => f.split('/').pop().replace(/\.\w+$/, ''));
+        parts.push(`uses: ${fromNames.join(', ')}`);
       }
 
-      return parts.join(' ');
+      return { line: parts.join(' '), total: inCount + outCount };
     })
-    .slice(0, 12);
+    .sort((a, b) => b.total - a.total)
+    .slice(0, limit)
+    .map(f => f.line);
 
   if (files.length === 0) return '';
 
