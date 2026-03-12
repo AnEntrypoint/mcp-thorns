@@ -1,8 +1,8 @@
 {
   "mcpServers": {
-    "mcp-gm": {
-      "command": "bunx",
-      "args": ["mcp-gm"]
+    "gm-exec": {
+      "command": "bun",
+      "args": ["x", "gm-exec", "--mcp"]
     }
   }
 }
