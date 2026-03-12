@@ -8,3 +8,6 @@ coverage/
 *.tgz
 .vexify.db
 .glootie-stop-verified
+.gm-stop-verified
+
+.code-search/

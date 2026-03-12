@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "mcp-gm": {
+      "command": "bunx",
+      "args": ["mcp-gm"]
+    }
+  }
+}

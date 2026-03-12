@@ -18,8 +18,11 @@ export function extractEntities(tree, sourceCode, lang) {
     filePaths: new Set(),
     eventPatterns: { emitters: 0, listeners: 0 },
     httpPatterns: { routes: [], fetches: 0, axios: 0 },
-    storagePatterns: { sql: 0, fileOps: 0, json: 0 }
+    storagePatterns: { sql: 0, fileOps: 0, json: 0 },
+    basicStats: { functions: 0, classes: 0, imports: 0, exports: 0, complexity: 0, lines: 0 }
   };
+
+  entities.basicStats.lines = sourceCode.split('\n').length;
 
   function hash(text) {
     return createHash('md5').update(text).digest('hex').slice(0, 8);
@@ -49,6 +52,7 @@ export function extractEntities(tree, sourceCode, lang) {
       const existing = entities.functions.get(sig) || { count: 0, hash: h, params };
       existing.count++;
       entities.functions.set(sig, existing);
+      entities.basicStats.functions++;
     }
 
     // Classes/structs/types
@@ -58,18 +62,27 @@ export function extractEntities(tree, sourceCode, lang) {
       const existing = entities.classes.get(name) || { count: 0, type: type.split('_')[0] };
       existing.count++;
       entities.classes.set(name, existing);
+      entities.basicStats.classes++;
     }
 
     // Imports
     if (type.includes('import')) {
       const imp = text.replace(/\s+/g, ' ').slice(0, 60);
       entities.imports.add(imp);
+      entities.basicStats.imports++;
     }
 
     // Exports
     if (type.includes('export')) {
       const exp = extractName(node) || text.slice(0, 30);
       entities.exports.add(exp);
+      entities.basicStats.exports++;
+    }
+
+    // Complexity
+    if (type === 'if_statement' || type === 'while_statement' || type === 'for_statement' ||
+        type === 'case_statement' || type === 'catch_clause') {
+      entities.basicStats.complexity++;
     }
 
     // Patterns (API calls, common patterns)
